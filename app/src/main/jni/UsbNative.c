@@ -39,10 +39,10 @@ int checkNULL(JNIEnv const *env,const char *log) {
 }
 
 struct device_descript dev_list[DEV_MIN];
-/*jstring  getString(JNIEnv *env,jbyteArray array){
- *//*   if ((*env)->PushLocalFrame(env,3)!=JNI_OK){
+jstring  getString2(JNIEnv *env,jbyteArray array){
+   if ((*env)->PushLocalFrame(env,3)!=JNI_OK){
         return NULL;
-    }*//*
+    }
   jclass stringCla= (*env)->FindClass(env,"java/lang/String");
     if(stringCla==NULL){
        // (*env)->PopLocalFrame(env,NULL);
@@ -53,32 +53,28 @@ struct device_descript dev_list[DEV_MIN];
        (*env)->PopLocalFrame(env,NULL);
         throwException(env,"java/lang/NullPointerException","空指针或者无法分配内存");
     }
-    jobject  jobject1=(*env)->NewObject(env,stringCla,jmethodID1,array,"utf-8");
-  //jobject stringObject=(*env)->PopLocalFrame(env,jobject1);
+    jobject  jobject1=(*env)->NewObject(env,stringCla,jmethodID1,array,(*env)->NewStringUTF(env,"utf-8"));
+  jobject stringObject=(*env)->PopLocalFrame(env,jobject1);
 
-   return (*env)->NewLocalRef(env,jobject1);
+   return stringObject;
 
-}*/
-//jstring  getStringByChar(JNIEnv *env,unsigned char  array[]){
-//   int size= strlen(array);
-//    if ((*env)->PushLocalFrame(env,size)!=JNI_OK){
-//        return NULL;
-//    }
-//   jbyteArray data=(*env)->NewByteArray(env,size);
-//    if(data==NULL){
-//        (*env)->PopLocalFrame(env,NULL);
-//        throwException(env,"java/lang/NullPointerException","空指针或者无法分配内存");
-//    }
-//    (*env)->SetByteArrayRegion(env,data,0,size,array);
-//   jstring  tmpString=getString(env,data);
-//    (*env)->PopLocalFrame(env,NULL);
-//
-//    return tmpString;
-//
-//}
+}
+jstring  getStringByChar(JNIEnv *env,unsigned char  array[]){
+   int size= strlen(array);
+    if ((*env)->PushLocalFrame(env,size)!=JNI_OK){
+        return NULL;
+    }
+   jbyteArray data=(*env)->NewByteArray(env,size);
+    if(data==NULL){
+        (*env)->PopLocalFrame(env,NULL);
+        throwException(env,"java/lang/NullPointerException","空指针或者无法分配内存");
+    }
+    (*env)->SetByteArrayRegion(env,data,0,size,array);
+   jstring  tmpString=getString2(env,data);
+    jstring backString=(*env)->PopLocalFrame(env,tmpString);
+    return backString;
 
-void permissionPath(libusb_device *pDevice);
-
+}
 
 
 jstring
@@ -422,7 +418,8 @@ JNIEXPORT  jobject JNICALL
 Java_com_icod_libusb_UsbNative_getConnectedDesc(JNIEnv *env, jobject instance, jint dev_no) {
 
 
-
+    (*env)->PushLocalFrame(env,16);
+    if(checkNULL(env,"无法创建这个数量的局部引用"))return NULL;
     jclass clsUsb=NULL;
     clsUsb=(*env)->FindClass(env,"com/icod/libusb/UsbIcodDevice");
     if(checkNULL(env,"无法创建UsbIcodDevice"))return NULL;
@@ -436,8 +433,7 @@ Java_com_icod_libusb_UsbNative_getConnectedDesc(JNIEnv *env, jobject instance, j
     jobject  usbObj=(*env)->NewObject(env,clsUsb,usbMethodId);
     if(checkNULL(env,"无法创建UsbIcodDevice对象"))return NULL;
 
-    (*env)->PushLocalFrame(env,16);
-    if(checkNULL(env,"无法创建这个数量的局部引用"))return NULL;
+
     jfieldID produceField=getFieldByName(env,clsUsb,"mProductName","Ljava/lang/String;");
     jfieldID manifacturerField=getFieldByName(env,clsUsb,"mManufacturer","Ljava/lang/String;");
     jfieldID serialNumberField=getFieldByName(env,clsUsb,"mSerialNumber","Ljava/lang/String;");
@@ -470,8 +466,7 @@ Java_com_icod_libusb_UsbNative_getConnectedDesc(JNIEnv *env, jobject instance, j
                                               255);
     unsigned  char serialNumberChar[size];
      getDesc(size,data,serialNumberChar);
-    jstring serialNumberString = getString(env, usbNativeCls, stringMethodId, size,
-                                           serialNumberChar);
+    jstring serialNumberString = getStringByChar(env,serialNumberChar);
     (*env)->SetIntField(env,usbObj,maxSizeField,desc.bMaxPacketSize0);
     (*env)->SetIntField(env,usbObj,protocolField,desc.bDeviceProtocol);
     (*env)->SetIntField(env,usbObj,classField,desc.bDeviceClass);
@@ -480,7 +475,9 @@ Java_com_icod_libusb_UsbNative_getConnectedDesc(JNIEnv *env, jobject instance, j
     (*env)->SetObjectField(env,usbObj,produceField,productString);
     (*env)->SetObjectField(env,usbObj,manifacturerField,manifactuerString);
     (*env)->SetObjectField(env,usbObj,serialNumberField,serialNumberString);
-    (*env)->PopLocalFrame(env,NULL);
+    (*env)->DeleteLocalRef(env,usbNativeCls);
+  jobject backObj= (*env)->PopLocalFrame(env,usbObj);
+
     if(checkNULL(env,"释放失败"))return NULL;
-    return usbObj;
+    return backObj;
 }
