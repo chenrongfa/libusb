@@ -77,8 +77,10 @@ public class MainActivity extends Activity implements View.OnClickListener {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-
-                        Log.d(TAG,usbConnection.getProductName(usbNative.getDev_no()));
+                        String trim = usbConnection.getProductName(usbNative.getDev_no()).trim()
+                                .replaceAll(" ","");
+                        String[] split = trim.split(" ");
+                        Log.d(TAG,Arrays.toString(split));
 
                         byte data[]=null;
                         try {

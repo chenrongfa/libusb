@@ -393,15 +393,34 @@ Java_com_icod_libusb_UsbNative_getProductName(JNIEnv *env, jobject instance, jin
         LOGI("tag %s","failed to get device descriptor");
         return (*env)->NewStringUTF(env,"");
     }
+
     unsigned char data[255];
+    unsigned char data2[255];
+    int total=0;
+
     memset(data,0,255);
-      int size=   libusb_get_string_descriptor_ascii(dev_list[dev_no].handler,desc.iManufacturer,
+    memset(data2,0,255);
+      int size=   libusb_get_string_descriptor_ascii(dev_list[dev_no].handler,desc.iProduct,
                                             data,
                                       255);
+    total=total+size;
+    for (int i = 0; i < size; ++i) {
+        data2[i]=data[i];
+
+    }
+    memset(data,0,255);
+   size= libusb_get_string_descriptor_ascii(dev_list[dev_no].handler,desc.iManufacturer,
+                                       data,
+                                       255);
+    for (int i = 0; i < size; ++i) {
+        data2[i+total]=data[i];
+
+    }
+    total+=size;
     LOGI("data len %d",strlen(data));
     LOGI("tag %s",data);
     LOGI("tag %d",size);
-    if (size<=0){
+    if (total<=0){
         const char* unKnow_device="unknow_device";
         strcpy(data,unKnow_device);
         int len=strlen(data);
@@ -409,8 +428,8 @@ Java_com_icod_libusb_UsbNative_getProductName(JNIEnv *env, jobject instance, jin
         (*env)->SetByteArrayRegion(env,productNmae,0,len,data);
         return productNmae;
     }
-    jbyteArray productNmae=(*env)->NewByteArray(env,size);
-    (*env)->SetByteArrayRegion(env,productNmae,0,size,data);
+    jbyteArray productNmae=(*env)->NewByteArray(env,total);
+    (*env)->SetByteArrayRegion(env,productNmae,0,total,data2);
     return  productNmae;
 }
 
@@ -460,8 +479,10 @@ Java_com_icod_libusb_UsbNative_getConnectedDesc(JNIEnv *env, jobject instance, j
     size=libusb_get_string_descriptor_ascii(dev_list[dev_no].handler, desc.iProduct, data, 255);
     unsigned char productChar[size];
     getDesc(size,data,productChar);
+
     jstring productString = getString(env, usbNativeCls, stringMethodId, size,
                                            productChar);
+
     size = libusb_get_string_descriptor_ascii(dev_list[dev_no].handler, desc.iSerialNumber, data,
                                               255);
     unsigned  char serialNumberChar[size];
